@@ -78,7 +78,7 @@ class BoilStepWithCountdownReminders(StepBase):
     def check_reminder(self, number):
         raw_value = self.__getattribute__("reminder_%02d" % number)
 
-        if isinstance(raw_value, unicode) and self.__getattribute__("reminder_%02d_displayed" % number) is not True:
+        if isinstance(raw_value, unicode) and raw_value != '' and self.__getattribute__("reminder_%02d_displayed" % number) is not True:
             value = int(raw_value)
             if self.countdown_time_has_expired(value):
                 self.__setattr__("reminder_%02d_displayed" % number, True)
