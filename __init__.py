@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
+import logging
 import time
-
 
 from modules.core.props import Property, StepProperty
 from modules.core.step import StepBase
@@ -29,30 +29,28 @@ class BoilStepWithCountdownReminders(StepBase):
     kettle = StepProperty.Kettle("Kettle", description="Kettle in which the boiling step takes place")
     timer = Property.Number("Timer in Minutes", configurable=True, default_value=90, description="Timer is started when target temperature is reached")
 
-    reminder_1 = Property.Number(REMINDER_DESCRIPTIONS[1], configurable=True)
-    reminder_1_displayed = Property.Number("",default_value=None)
-    reminder_2 = Property.Number("Hop 2 Addition", configurable=True)
-    reminder_2_displayed = Property.Number("", default_value=None)
-    reminder_3 = Property.Number("Hop 3 Addition", configurable=True)
-    reminder_3_displayed = Property.Number("", default_value=None)
-    reminder_4 = Property.Number("Hop 4 Addition", configurable=True)
-    reminder_4_displayed = Property.Number("", default_value=None)
-    reminder_5 = Property.Number("Hop 5 Addition", configurable=True)
-    reminder_5_displayed = Property.Number("", default_value=None)
-
-    reminder_6 = Property.Number("Prepare Yeast", configurable=True)
-    reminder_6_displayed = Property.Number("", default_value=None, description="Reminder displayed status")
-    reminder_7 = Property.Number("Prepare Finings", configurable=True)
-    reminder_7_displayed = Property.Number("", default_value=None, description="Reminder displayed status")
-    reminder_8 = Property.Number("Prepare Cooling System", configurable=True)
-    reminder_8_displayed = Property.Number("", default_value=None, description="Reminder displayed status")
-    reminder_9 = Property.Number("Dose Finings", configurable=True)
-    reminder_9_displayed = Property.Number("", default_value=None, description="Reminder displayed status")
-    reminder_10 = Property.Number("Start Hot-Side Cooling Loop", configurable=True)
+    reminder_00 = Property.Number(REMINDER_NAMES[0], configurable=True)
+    reminder_00_displayed = Property.Number("", default_value=None, description="Reminder displayed status")
+    reminder_01 = Property.Number(REMINDER_NAMES[1], configurable=True)
+    reminder_01_displayed = Property.Number("",default_value=None)
+    reminder_02 = Property.Number(REMINDER_NAMES[2], configurable=True)
+    reminder_02_displayed = Property.Number("", default_value=None)
+    reminder_03 = Property.Number(REMINDER_NAMES[3], configurable=True)
+    reminder_03_displayed = Property.Number("", default_value=None)
+    reminder_04 = Property.Number(REMINDER_NAMES[4], configurable=True)
+    reminder_04_displayed = Property.Number("", default_value=None)
+    reminder_05 = Property.Number(REMINDER_NAMES[5], configurable=True)
+    reminder_05_displayed = Property.Number("", default_value=None)
+    reminder_06 = Property.Number(REMINDER_NAMES[6], configurable=True)
+    reminder_06_displayed = Property.Number("", default_value=None, description="Reminder displayed status")
+    reminder_07 = Property.Number(REMINDER_NAMES[7], configurable=True)
+    reminder_07_displayed = Property.Number("", default_value=None, description="Reminder displayed status")
+    reminder_08 = Property.Number(REMINDER_NAMES[8], configurable=True)
+    reminder_08_displayed = Property.Number("", default_value=None, description="Reminder displayed status")
+    reminder_09 = Property.Number(REMINDER_NAMES[9], configurable=True)
+    reminder_09_displayed = Property.Number("", default_value=None, description="Reminder displayed status")
+    reminder_10 = Property.Number(REMINDER_NAMES[10], configurable=True)
     reminder_10_displayed = Property.Number("", default_value=None, description="Reminder displayed status")
-    reminder_11 = Property.Number("Prepare Fermenter", configurable=True)
-    reminder_11_displayed = Property.Number("", default_value=None, description="Reminder displayed status")
-
 
     def init(self):
         '''
@@ -60,6 +58,7 @@ class BoilStepWithCountdownReminders(StepBase):
         :return:
         '''
         self.set_target_temp(self.temp, self.kettle)
+        self._logger = logging.getLogger(type(self).__name__)
 
     @cbpi.action("Start Timer Now")
     def start(self):
@@ -77,17 +76,17 @@ class BoilStepWithCountdownReminders(StepBase):
         self.set_target_temp(0, self.kettle)
 
     def check_reminder(self, number):
-        reminder = getattr(self, "reminder_%s" % number)
-        value = reminder.value
-        if self.__getattribute__("reminder_%s_displayed" % number) is not True:
-            if countdown_time_has_expired(value):
-                self.__setattr__("reminder_%s_displayed" % number, True)
-                description = reminder.description
-                self.notify("Countdown Reminder", description, timeout=None)
+        raw_value = self.__getattribute__("reminder_%02d" % number)
 
-    @staticmethod
-    def countdown_time_has_expired(value):
-        return time.time() > (self.timer_end - (int(value) * 60))
+        if isinstance(raw_value, unicode) and self.__getattribute__("reminder_%02d_displayed" % number) is not True:
+            value = int(raw_value)
+            if self.countdown_time_has_expired(value):
+                self.__setattr__("reminder_%02d_displayed" % number, True)
+                reminder = self.REMINDER_NAMES[number]
+                self.notify("Countdown Reminder", reminder, timeout=None)
+
+    def countdown_time_has_expired(self, value):
+        return time.time() > (self.timer_end - (value * 60))
 
     def execute(self):
         '''
@@ -100,15 +99,9 @@ class BoilStepWithCountdownReminders(StepBase):
             if self.is_timer_finished() is None:
                 self.start_timer(int(self.timer) * 60)
             else:
-                # for i in range(1, 12):
-                for i in range(1, 2):
+                for i in range(11):
                     self.check_reminder(i)
-                # self.check_reminder(1, self.hop_1)
-                # self.check_hop_timer(2, self.hop_2)
-                # self.check_hop_timer(3, self.hop_3)
-                # self.check_hop_timer(4, self.hop_4)
-                # self.check_hop_timer(5, self.hop_5)
-        # Check if timer finished and go to next step
+
         if self.is_timer_finished() == True:
             self.notify("Boil Step Completed!", "Starting the next step", timeout=None)
             self.next()
