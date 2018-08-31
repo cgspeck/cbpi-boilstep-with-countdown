@@ -11,21 +11,48 @@ class BoilStepWithCountdownReminders(StepBase):
     '''
     BoilStep with reminders that are set relative to end of boil
     '''
+    REMINDER_NAMES = [
+        "Hop 1 Addition",
+        "Hop 2 Addition",
+        "Hop 3 Addition",
+        "Hop 4 Addition",
+        "Hop 5 Addition",
+        "Prepare yeast",
+        "Prepare finings",
+        "Prepare cooling system",
+        "Dose finings",
+        "Start hot-side cooling loop",
+        "Prepare fermenter"
+    ]
     # Properties
     temp = Property.Number("Temperature", configurable=True, default_value=100, description="Target temperature for boiling")
     kettle = StepProperty.Kettle("Kettle", description="Kettle in which the boiling step takes place")
     timer = Property.Number("Timer in Minutes", configurable=True, default_value=90, description="Timer is started when target temperature is reached")
-    hop_1 = Property.Number("Hop 1 Addition", configurable=True, description="Fist Hop alert")
-    hop_1_added = Property.Number("",default_value=None)
-    hop_2 = Property.Number("Hop 2 Addition", configurable=True, description="Second Hop alert")
-    hop_2_added = Property.Number("", default_value=None)
-    hop_3 = Property.Number("Hop 3 Addition", configurable=True)
-    hop_3_added = Property.Number("", default_value=None, description="Third Hop alert")
-    hop_4 = Property.Number("Hop 4 Addition", configurable=True)
-    hop_4_added = Property.Number("", default_value=None, description="Fourth Hop alert")
-    hop_5 = Property.Number("Hop 5 Addition", configurable=True)
-    hop_5_added = Property.Number("", default_value=None, description="Fifth Hop alert")
-    hop_timer_mode = Property.Select("Hop timer mode", options=["Stopwatch", "Countdown"], description="Stopwatch counts time from start of boil, Countdown counts time to end of boil.")
+
+    reminder_1 = Property.Number(REMINDER_DESCRIPTIONS[1], configurable=True)
+    reminder_1_displayed = Property.Number("",default_value=None)
+    reminder_2 = Property.Number("Hop 2 Addition", configurable=True)
+    reminder_2_displayed = Property.Number("", default_value=None)
+    reminder_3 = Property.Number("Hop 3 Addition", configurable=True)
+    reminder_3_displayed = Property.Number("", default_value=None)
+    reminder_4 = Property.Number("Hop 4 Addition", configurable=True)
+    reminder_4_displayed = Property.Number("", default_value=None)
+    reminder_5 = Property.Number("Hop 5 Addition", configurable=True)
+    reminder_5_displayed = Property.Number("", default_value=None)
+
+    reminder_6 = Property.Number("Prepare Yeast", configurable=True)
+    reminder_6_displayed = Property.Number("", default_value=None, description="Reminder displayed status")
+    reminder_7 = Property.Number("Prepare Finings", configurable=True)
+    reminder_7_displayed = Property.Number("", default_value=None, description="Reminder displayed status")
+    reminder_8 = Property.Number("Prepare Cooling System", configurable=True)
+    reminder_8_displayed = Property.Number("", default_value=None, description="Reminder displayed status")
+    reminder_9 = Property.Number("Dose Finings", configurable=True)
+    reminder_9_displayed = Property.Number("", default_value=None, description="Reminder displayed status")
+    reminder_10 = Property.Number("Start Hot-Side Cooling Loop", configurable=True)
+    reminder_10_displayed = Property.Number("", default_value=None, description="Reminder displayed status")
+    reminder_11 = Property.Number("Prepare Fermenter", configurable=True)
+    reminder_11_displayed = Property.Number("", default_value=None, description="Reminder displayed status")
+
 
     def init(self):
         '''
@@ -49,18 +76,18 @@ class BoilStepWithCountdownReminders(StepBase):
     def finish(self):
         self.set_target_temp(0, self.kettle)
 
-    def check_hop_timer(self, number, value):
-        if self.__getattribute__("hop_%s_added" % number) is not True:
-            do_message = False
+    def check_reminder(self, number):
+        reminder = getattr(self, "reminder_%s" % number)
+        value = reminder.value
+        if self.__getattribute__("reminder_%s_displayed" % number) is not True:
+            if countdown_time_has_expired(value):
+                self.__setattr__("reminder_%s_displayed" % number, True)
+                description = reminder.description
+                self.notify("Countdown Reminder", description, timeout=None)
 
-            if self.hop_timer_mode == "Countdown" and time.time() > (self.timer_end - (int(value) * 60)):
-                do_message = True
-            elif time.time() > (self.timer_end - (int(self.timer) * 60 - int(value) * 60)):
-                do_message = True
-
-            if do_message:
-                self.__setattr__("hop_%s_added" % number, True)
-                self.notify("Hop Alert", "Please add Hop %s" % number, timeout=None)
+    @staticmethod
+    def countdown_time_has_expired(value):
+        return time.time() > (self.timer_end - (int(value) * 60))
 
     def execute(self):
         '''
@@ -73,11 +100,14 @@ class BoilStepWithCountdownReminders(StepBase):
             if self.is_timer_finished() is None:
                 self.start_timer(int(self.timer) * 60)
             else:
-                self.check_hop_timer(1, self.hop_1)
-                self.check_hop_timer(2, self.hop_2)
-                self.check_hop_timer(3, self.hop_3)
-                self.check_hop_timer(4, self.hop_4)
-                self.check_hop_timer(5, self.hop_5)
+                # for i in range(1, 12):
+                for i in range(1, 2):
+                    self.check_reminder(i)
+                # self.check_reminder(1, self.hop_1)
+                # self.check_hop_timer(2, self.hop_2)
+                # self.check_hop_timer(3, self.hop_3)
+                # self.check_hop_timer(4, self.hop_4)
+                # self.check_hop_timer(5, self.hop_5)
         # Check if timer finished and go to next step
         if self.is_timer_finished() == True:
             self.notify("Boil Step Completed!", "Starting the next step", timeout=None)
